@@ -1,0 +1,12 @@
+# TOP LEVEL GITIGNORE
+.vscode
+
+# FASTAPI GITIGNORE
+# pycache in all directores
+__pycache__
+
+# python version
+.python-version
+
+# local.env files
+local.env
