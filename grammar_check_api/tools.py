@@ -1,37 +1,38 @@
 import json
 import openai
+import os
+
+from pydantic import BaseModel
+from typing import List
 
 SYSTEM_PROMPT = """
-You are a helpful grammar assistant. You take in sequences of text and determine if any words are mispelled or using incorrect grammar. Only respond in the JSON format specified:
+You are a helpful grammar assistant. You take in sequences of text and determine if any words are mispelled or using incorrect grammar.
 
-Give the word, word_index (the index of the word in the whole text), previous_words (the 3 (ONLY 3) words before the word IN ORDER), subsequent_words (the 3 (ONLY 3) words after the word IN ORDER), word_correction (the corrected word), and an explanation of why the word is likely to be incorrect
+For each word you find, give the mispelled word, word_correction (the corrected word), and an explanation of why the word is likely to be incorrect. 
 
-Here is an example
-{
-    "grammar_suggestions": [
-        {
-            "word": "financail",
-            "word_index": 4,
-            "previous_words": ["These", "are", "the"],
-            "subsequent_words": ["documents", "you", "requested"],
-            "word_correction": "financial",
-            "explanation": "The word is likely to be financial based on the context talking about money and the similar spelling."
-        },
-        {
-            "word": "referall",
-            "word_index": 10,
-            "previous_words": ["I", "need", "a"],
-            "subsequent_words": ["to", "a", "specialist"],
-            "word_correction": "referral",
-            "explanation": "The word is likely to be referral based on the context talking about needing a specialist."
-        }
-    ]
-}
+ONLY provide suggestions for words that are likely to be incorrect and only respond in the JSON format specified:
 """
 
 
+class GrammarSuggestion(BaseModel):
+    word: str
+    word_correction: str
+    explanation: str
+
+
+class GrammarSuggestions(BaseModel):
+    grammar_suggestions: List[GrammarSuggestion]
+
+
+# Create client
+client = openai.OpenAI(
+    base_url="https://api.together.xyz/v1",
+    api_key=os.environ["TOGETHER_API_KEY"],
+)
+
+
 def grammar_checker(text):
-    suggestions = get_openai_suggestions(text).get("grammar_suggestions", [])
+    suggestions = get_llm_suggestions(text).get("grammar_suggestions", [])
 
     cleaned_suggestions = []
     split_text = text.split(" ")
@@ -47,8 +48,8 @@ def grammar_checker(text):
     return {"grammar_suggestions": cleaned_suggestions}
 
 
-def get_openai_suggestions(text):
-    response = openai.chat.completions.create(
+def get_llm_suggestions(text):
+    response = client.chat.completions.create(
         messages=[
             {
                 "role": "system",
@@ -56,8 +57,11 @@ def get_openai_suggestions(text):
             },
             {"role": "user", "content": text},
         ],
-        model="gpt-4-turbo",
-        response_format={"type": "json_object"},
+        model="mistralai/Mistral-7B-Instruct-v0.1",
+        response_format={
+            "type": "json_object",
+            "schema": GrammarSuggestions.model_json_schema(),
+        },
     )
 
     return json.loads(response.choices[0].message.content)
