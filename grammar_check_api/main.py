@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from pydantic import BaseModel
 
+from providers import get_provider_client
 from tools import grammar_checker
 
 app = FastAPI()
@@ -19,6 +20,12 @@ app.add_middleware(
 
 class GrammarRequest(BaseModel):
     text: str
+    provider: str
+    model: str
+    key: str
+    suggestionType: (
+        str  # TODO: remove CamelCase that's only here to match the Next.js frontend
+    )
 
 
 @app.get("/")
@@ -28,5 +35,16 @@ def read_root():
 
 @app.post("/check_grammar")
 def check_grammar(request: GrammarRequest):
-    suggestions = grammar_checker(request.text)
+
+    # Print
+    print(f"Received request from {request.provider} with model {request.model}")
+
+    # Create a new client with the requested provider and API key.
+    client = get_provider_client(provider=request.provider, api_key=request.key)
+
+    # Get the grammar suggestions from the client.
+    suggestions = grammar_checker(
+        client, request.text, request.model, request.suggestionType
+    )
+
     return suggestions

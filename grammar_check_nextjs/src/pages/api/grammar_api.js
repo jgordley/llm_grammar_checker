@@ -2,11 +2,11 @@ import axios from 'axios';
 
 export default async function handler(req, res) {
     if (req.method === 'POST') {
-        const { text } = req.body;
+        const { text, provider, model, key, suggestionType } = req.body;
 
         try {
             const apiUrl = process.env.FASTAPI_SERVER_URL + '/check_grammar';
-            const response = await axios.post(apiUrl, { text });
+            const response = await axios.post(apiUrl, { text, provider, model, key, suggestionType });
 
             // Return the data from FastAPI to the client
             console.log('response', response);
